@@ -588,33 +588,74 @@ async function connectSerial(){
 }
 
 function handleSerialLine(line){
-  // Expected: plant_id,uptime_ms,soil,light,temp
-  const parts = line.split(",");
-  if(parts.length < 5){
-    console.warn("שורה לא צפויה:", line);
+  console.log("RAW LINE FROM GATEWAY:", line);
+
+  // Ignore comments / header lines
+  if (line.startsWith("#")) {
+    console.log("HEADER/COMMENT:", line);
     return;
   }
 
-  const plantId   = Number(parts[0]);
-  const uptime_ms = Number(parts[1]);
-  const soil      = Number(parts[2]);
-  const light     = Number(parts[3]);
-  const temp      = Number(parts[4]);
+  const parts = line.split(",");
+
+  if (parts.length < 4) {
+    console.warn("שורה לא צפויה (פחות מ-4 חלקים):", line);
+    return;
+  }
+
+  let plantId, uptime_ms, soil, light, temp;
+
+  if (parts.length === 5) {
+    // ✅ Ideal case: plant_id,uptime_ms,soil,light,temp
+    plantId   = Number(parts[0]);
+    uptime_ms = Number(parts[1]);
+    soil      = Number(parts[2]);
+    light     = Number(parts[3]);
+    temp      = Number(parts[4]);
+  } else if (parts.length === 4) {
+    // 🟡 Fallback: plant_id,uptime_ms,soil,temp  (no light)
+    // Based on lines like: 1,1481701,0,0
+    plantId   = Number(parts[0]);
+    uptime_ms = Number(parts[1]);
+    soil      = Number(parts[2]);
+    temp      = Number(parts[3]);
+
+    // If light is missing, reuse last light if we have it, otherwise 0
+    light = lastLatest ? lastLatest.light : 0;
+  } else {
+    // More than 5 parts – log & ignore for now
+    console.warn("שורה לא צפויה (מספר חלקים לא ידוע):", line);
+    return;
+  }
 
   const now = new Date();
-  if(!serialBaseStart){
+  if (!serialBaseStart) {
     // Align first sample so that: base + uptime_ms ≈ now
     serialBaseStart = new Date(now.getTime() - uptime_ms);
   }
   const absDate = new Date(serialBaseStart.getTime() + uptime_ms);
 
-  const sample = { plantId, uptime_ms, soil, light, temp, absDate };
+  // Safety clamps so we don't get crazy numbers on screen
+  const safeTemp  = Math.max(-10, Math.min(60, temp));
+  const safeLight = Math.max(0,   Math.min(100, light));
+  const safeSoil  = Math.max(0,   Math.min(100, soil));
+
+  const sample = {
+    plantId,
+    uptime_ms,
+    soil:  safeSoil,
+    light: safeLight,
+    temp:  safeTemp,
+    absDate
+  };
+
   logs.push(sample);
 
   renderLatest(sample);
   renderTeacher();
   lastSyncEl.textContent = "קיבל נתונים: " + formatAbsHebrew(new Date());
 }
+
 
 async function disconnectSerial(){
   try{
