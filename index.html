@@ -120,14 +120,14 @@
     </div>
     <div style="height:10px"></div>
     <div class="buttons">
-      <button id="connectBtn" class="primary">התחבר / סנכרן</button>
+      <button id="connectBtn" class="primary">התחבר / סנכרן (USB)</button>
       <button id="disconnectBtn">נתק</button>
-      <button id="pullLatestBtn" class="good">קרא מדידה אחרונה</button>
-      <button id="pullLogsBtn" class="warn">משוך לוגים</button>
-      <button id="clearLogsBtn" class="bad">נקה לוגים על המיקרוביט</button>
+      <button id="pullLatestBtn" class="good">הצג מדידה אחרונה</button>
+      <button id="pullLogsBtn" class="warn">רענן תצוגה</button>
+      <button id="clearLogsBtn" class="bad">נקה לוגים בדף זה</button>
     </div>
     <div style="margin-top:8px" class="notice">
-      * Web Bluetooth עובד רק ב-Chrome/Edge באנדרואיד או מחשב. באייפון/אייפד זה לא נתמך.
+      * חיבור עובד דרך כבל USB למחשב ודרך Chrome / Edge במחשב שולחני. במובייל / iPad זה בדרך־כלל לא נתמך.
     </div>
   </section>
 
@@ -141,7 +141,7 @@
 
       <div id="kidMoodView">
         <div class="bigEmoji" id="moodEmoji">🌿</div>
-        <div class="moodLine" id="moodLine">שלום! לחצו סנכרון.</div>
+        <div class="moodLine" id="moodLine">שלום! לחצו התחברות.</div>
         <div class="moodSub" id="moodSub">אני מחכה למדידות…</div>
 
         <div class="kv">
@@ -210,7 +210,7 @@
         </div>
 
         <div style="margin-top:8px" class="notice">
-          הטיפ: הורידו CSV → פתחו Google Sheets → File → Import → Upload.
+          טיפ: הורידו CSV → פתחו Google Sheets → File → Import → Upload.
         </div>
       </div>
 
@@ -248,29 +248,23 @@
 
   <section class="card">
     <div class="notice">
-      <b>פרוטוקול צפוי מהמיקרוביט (להמשך):</b><br/>
-      - הדפדפן ישלח שורות טקסט ב-UART BLE.<br/>
-      - פקודות:<br/>
-      &nbsp;&nbsp;GET_LATEST → המיקרוביט יחזיר: <code>SAMPLE,uptime_ms,soil,light,temp</code><br/>
-      &nbsp;&nbsp;GET_LOGS → המיקרוביט יחזיר הרבה שורות SAMPLE ואז <code>END</code><br/>
-      &nbsp;&nbsp;CLEAR_LOGS → מוחק קובץ לוגים (מחזיר OK).<br/>
-      - השורות מופרדות ב-\n. כרגע יש מצב דמו עד שהלוח יגיע.
+      <b>פרוטוקול מהמיקרוביט שער (Gateway):</b><br/>
+      - המיקרוביט מחובר למחשב בכבל USB וכותב שורות טקסט (CSV) לחיבור הסיריאלי.<br/>
+      - כל שורה בפורמט:<br/>
+      &nbsp;&nbsp;<code>plant_id,uptime_ms,soil,light,temp</code><br/>
+      - הדף קורא שורות אלו ומציג אותן כגרפים, טבלה ו-CSV להורדה.<br/>
+      - במובנה המלא: שער אחד, כמה צמחים שמשדרים אליו ברדיו.
     </div>
   </section>
 
 </main>
 
-<div class="footer">צמחכם 🌱 | Web Bluetooth + Canva hybrid</div>
+<div class="footer">צמחכם 🌱 | Web Serial + Canva hybrid</div>
 
 <script>
 /** ------------------------------
- *  CONFIG (edit later as needed)
+ *  CONFIG
  *  ------------------------------ */
-
-// micro:bit UART Service UUIDs (Nordic UART)
-const UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-const UART_RX      = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // write
-const UART_TX      = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // notify
 
 // URL param group
 const params = new URLSearchParams(location.search);
@@ -278,10 +272,9 @@ const groupId = params.get("group") || "-";
 document.getElementById("groupPill").textContent = "קבוצה: " + groupId;
 
 // Canva URL mapping per group (placeholder).
-// Later you can load this from a Google Sheet.
 const CANVA_MAP = {
-  "A": { happy:"https://example.com/happyA", dry:"https://example.com/dryA", dark:"https://example.com/darkA", hot:"https://example.com/hotA" },
-  "B": { happy:"https://example.com/happyB", dry:"https://example.com/dryB", dark:"https://example.com/darkB", hot:"https://example.com/hotB" }
+  "A": { happy:"https://example.com/happyA", a_bit_dry:"https://example.com/dryA", too_dry:"https://example.com/dryA", too_wet:"https://example.com/wetA", too_dark:"https://example.com/darkA", too_hot:"https://example.com/hotA", too_cold:"https://example.com/coldA" },
+  "B": { happy:"https://example.com/happyB", a_bit_dry:"https://example.com/dryB", too_dry:"https://example.com/dryB", too_wet:"https://example.com/wetB", too_dark:"https://example.com/darkB", too_hot:"https://example.com/hotB", too_cold:"https://example.com/coldB" }
 };
 
 // Moods in Hebrew + emojis
@@ -312,14 +305,15 @@ const TH = {
  *  ------------------------------ */
 let demoMode = false;
 
-let device, server, rxChar, txChar;
-let notifyBuffer = "";
-let connected = false;
-
-let logs = []; // {uptime_ms, soil, light, temp, absDate: Date}
+let logs = []; // {plantId, uptime_ms, soil, light, temp, absDate: Date}
 let lastLatest = null;
-
 let charts = { soil:null, light:null, temp:null, miniSoil:null, miniLight:null, miniTemp:null };
+
+// Web Serial
+let serialPort = null;
+let serialReader = null;
+let serialKeepReading = false;
+let serialBaseStart = null; // Date to reconstruct abs times
 
 /** ------------------------------
  *  UI helpers
@@ -330,38 +324,34 @@ const btStatus = el("btStatus");
 const lastSyncEl = el("lastSync");
 
 function setConnectedUI(on){
-  connected = on;
   btDot.classList.toggle("on", on);
-  btStatus.textContent = on ? "מחובר" : "מנותק";
+  btStatus.textContent = on ? "מחובר (USB)" : "מנותק";
 }
 
 function formatAbsHebrew(d){
-  // HH:MM  weekday  DD/MM/YY
   const hh = String(d.getHours()).padStart(2,"0");
   const mm = String(d.getMinutes()).padStart(2,"0");
   const dd = String(d.getDate()).padStart(2,"0");
   const mo = String(d.getMonth()+1).padStart(2,"0");
   const yy = String(d.getFullYear()).slice(-2);
-
   const wd = ["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"][d.getDay()];
   return `${hh}:${mm}  ${wd}  ${dd}/${mo}/${yy}`;
 }
 
 /** ------------------------------
- *  Mood logic (simple priority)
+ *  Mood logic
  *  ------------------------------ */
 function computeMood(sample){
   if(!sample) return "confused";
 
   const {soil, light, temp} = sample;
 
-  // Priority rules
-  if(soil <= TH.soilTooDry) return "too_dry";
-  if(soil >= TH.soilTooWet) return "too_wet";
-  if(temp >= TH.tempTooHot) return "too_hot";
-  if(temp <= TH.tempTooCold) return "too_cold";
+  if(soil <= TH.soilTooDry)    return "too_dry";
+  if(soil >= TH.soilTooWet)    return "too_wet";
+  if(temp >= TH.tempTooHot)    return "too_hot";
+  if(temp <= TH.tempTooCold)   return "too_cold";
   if(light <= TH.lightTooDark) return "too_dark";
-  if(soil <= TH.soilABitDry) return "a_bit_dry";
+  if(soil <= TH.soilABitDry)   return "a_bit_dry";
 
   return "happy";
 }
@@ -373,7 +363,7 @@ function renderLatest(sample){
   if(!sample) return;
 
   const moodKey = computeMood(sample);
-  const mood = MOODS[moodKey];
+  const mood = MOODS[moodKey] || MOODS.confused;
 
   el("moodEmoji").textContent = mood.emoji;
   el("moodLine").textContent = mood.line;
@@ -383,7 +373,6 @@ function renderLatest(sample){
   el("lightVal").textContent = `${sample.light}%`;
   el("tempVal").textContent = `${sample.temp.toFixed(1)}°`;
 
-  // Link to Canva mood page if present
   const gmap = CANVA_MAP[groupId];
   const canvaUrl = gmap?.[moodKey] || gmap?.happy || null;
   el("openCanvaBtn").onclick = () => {
@@ -408,7 +397,6 @@ function renderTeacher(){
     el("spanVal").textContent = "—";
   }
 
-  // Table
   const tbody = el("logTbody");
   tbody.innerHTML = "";
   logs.forEach((s,i)=>{
@@ -424,7 +412,6 @@ function renderTeacher(){
     tbody.appendChild(tr);
   });
 
-  // Charts
   renderCharts();
   renderMiniCharts();
 }
@@ -434,6 +421,8 @@ function renderCharts(){
     el("teacherGraphsView").innerHTML = "<div class='notice'>Chart.js לא נטען (כנראה בלי אינטרנט). אפשר עדיין להוריד CSV.</div>";
     return;
   }
+  if(logs.length === 0) return;
+
   const labels = logs.map(s => s.absDate ? formatAbsHebrew(s.absDate) : (s.uptime_ms/3600000).toFixed(2));
   const soilData  = logs.map(s => s.soil);
   const lightData = logs.map(s => s.light);
@@ -463,16 +452,18 @@ function renderCharts(){
 function renderMiniCharts(){
   if(!window.Chart || logs.length < 2) return;
 
-  // last 24h (by abs time if available, else last N samples)
   const now = new Date();
   let slice = logs;
   if(logs[0].absDate){
     slice = logs.filter(s => (now - s.absDate) <= 24*3600*1000);
   } else {
-    slice = logs.slice(-240); // arbitrary window
+    slice = logs.slice(-240);
   }
 
-  const labels = slice.map(s => s.absDate ? String(s.absDate.getHours()).padStart(2,"0")+":"+String(s.absDate.getMinutes()).padStart(2,"0") : Math.round(s.uptime_ms/60000)+" דק׳");
+  const labels = slice.map(s => s.absDate
+    ? String(s.absDate.getHours()).padStart(2,"0")+":"+String(s.absDate.getMinutes()).padStart(2,"0")
+    : Math.round(s.uptime_ms/60000)+" דק׳"
+  );
   const soilData  = slice.map(s => s.soil);
   const lightData = slice.map(s => s.light);
   const tempData  = slice.map(s => s.temp);
@@ -499,12 +490,12 @@ function renderMiniCharts(){
  *  CSV export
  *  ------------------------------ */
 function makeCsv(){
-  const header = ["timestamp","weekday","uptime_s","soil","light","temp_c"];
+  const header = ["timestamp","weekday","uptime_s","soil","light","temp_c","plant_id"];
   const rows = logs.map(s=>{
     const d = s.absDate || new Date();
     const ts = formatAbsHebrew(d);
     const wd = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()];
-    return [ts, wd, Math.round(s.uptime_ms/1000), s.soil, s.light, s.temp.toFixed(2)];
+    return [ts, wd, Math.round(s.uptime_ms/1000), s.soil, s.light, s.temp.toFixed(2), s.plantId ?? ""];
   });
   return [header, ...rows].map(r=>r.join(",")).join("\n");
 }
@@ -521,7 +512,6 @@ el("downloadCsvBtn").onclick = () => {
 };
 
 el("openSheetsBtn").onclick = () => {
-  // open a new blank sheet, user can import CSV
   window.open("https://sheets.new", "_blank");
 };
 
@@ -538,136 +528,140 @@ function speak(text){
 }
 
 /** ------------------------------
- *  BLE logic
+ *  Web Serial logic (gateway CSV)
  *  ------------------------------ */
-async function connectAndSync(){
+async function connectSerial(){
   if(demoMode){
     runDemoSync();
     return;
   }
 
   try{
-    device = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: "BBC micro:bit" }],
-      optionalServices: [UART_SERVICE]
-    });
+    if(!("serial" in navigator)){
+      alert("הדפדפן לא תומך ב-Web Serial. נסה Chrome / Edge במחשב שולחני.");
+      return;
+    }
 
-    device.addEventListener("gattserverdisconnected", onDisconnected);
-
-    server = await device.gatt.connect();
-    const service = await server.getPrimaryService(UART_SERVICE);
-    rxChar = await service.getCharacteristic(UART_RX);
-    txChar = await service.getCharacteristic(UART_TX);
-
-    await txChar.startNotifications();
-    txChar.addEventListener("characteristicvaluechanged", onNotify);
+    serialPort = await navigator.serial.requestPort({});
+    await serialPort.open({ baudRate: 115200 });
 
     setConnectedUI(true);
-    lastSyncEl.textContent = "סנכרון אחרון: " + formatAbsHebrew(new Date());
+    lastSyncEl.textContent = "חיבור פעיל: " + formatAbsHebrew(new Date());
 
-    // Pull latest + logs by default
-    await sendLine("GET_LATEST");
-    await sendLine("GET_LOGS");
+    serialKeepReading = true;
+    serialBaseStart = null;
 
-  }catch(err){
+    const textDecoder = new TextDecoderStream();
+    const readableClosed = serialPort.readable.pipeTo(textDecoder.writable);
+    const reader = textDecoder.readable.getReader();
+    serialReader = reader;
+
+    let buffer = "";
+
+    (async () => {
+      try{
+        while(serialKeepReading){
+          const { value, done } = await reader.read();
+          if(done) break;
+          if(value){
+            buffer += value;
+            let lines = buffer.split(/\r?\n/);
+            buffer = lines.pop() || "";
+            for(const line of lines){
+              const trimmed = line.trim();
+              if(trimmed) handleSerialLine(trimmed);
+            }
+          }
+        }
+      } catch(err){
+        console.error("Serial read error:", err);
+      } finally{
+        reader.releaseLock();
+      }
+    })();
+
+  } catch(err){
     console.error(err);
-    alert("לא הצלחתי להתחבר. ודאו שאתם ב-Chrome/Edge ושהמיקרוביט דולק.");
+    alert("לא הצלחתי להתחבר ל-micro:bit דרך USB. ודאו שהוא מחובר ומזוהה במחשב.");
+    setConnectedUI(false);
   }
 }
 
-function onDisconnected(){
-  setConnectedUI(false);
-}
-
-async function disconnect(){
-  if(device?.gatt?.connected) device.gatt.disconnect();
-  setConnectedUI(false);
-}
-
-async function sendLine(str){
-  if(!rxChar) return;
-  const enc = new TextEncoder();
-  await rxChar.writeValue(enc.encode(str + "\n"));
-}
-
-// Incoming BLE UART chunks
-function onNotify(ev){
-  const dec = new TextDecoder();
-  notifyBuffer += dec.decode(ev.target.value);
-
-  // Process full lines
-  let idx;
-  while((idx = notifyBuffer.indexOf("\n")) >= 0){
-    const line = notifyBuffer.slice(0, idx).trim();
-    notifyBuffer = notifyBuffer.slice(idx+1);
-    if(line) handleLine(line);
-  }
-}
-
-// Expected lines:
-// SAMPLE,uptime_ms,soil,light,temp
-// END
-// OK
-function handleLine(line){
-  if(line.startsWith("SAMPLE")){
-    const parts = line.split(",");
-    const uptime_ms = Number(parts[1]);
-    const soil = Number(parts[2]);
-    const light = Number(parts[3]);
-    const temp = Number(parts[4]);
-    const s = { uptime_ms, soil, light, temp };
-
-    // If this is the first sample in a batch and we have a wall-clock moment, reconstruct abs times later.
-    logs.push(s);
-
-    // Update "latest"
-    renderLatest(s);
+function handleSerialLine(line){
+  // Expected: plant_id,uptime_ms,soil,light,temp
+  const parts = line.split(",");
+  if(parts.length < 5){
+    console.warn("שורה לא צפויה:", line);
+    return;
   }
 
-  if(line === "END"){
-    reconstructAbsDates();
-    renderTeacher();
-    renderMiniCharts();
-  }
-}
+  const plantId   = Number(parts[0]);
+  const uptime_ms = Number(parts[1]);
+  const soil      = Number(parts[2]);
+  const light     = Number(parts[3]);
+  const temp      = Number(parts[4]);
 
-function reconstructAbsDates(){
-  if(logs.length === 0) return;
-
-  // Reconstruct absolute times based on "now" and last uptime
   const now = new Date();
-  const last = logs[logs.length-1];
-  const startAbs = new Date(now.getTime() - last.uptime_ms);
+  if(!serialBaseStart){
+    // Align first sample so that: base + uptime_ms ≈ now
+    serialBaseStart = new Date(now.getTime() - uptime_ms);
+  }
+  const absDate = new Date(serialBaseStart.getTime() + uptime_ms);
 
-  logs.forEach(s=>{
-    s.absDate = new Date(startAbs.getTime() + s.uptime_ms);
-  });
+  const sample = { plantId, uptime_ms, soil, light, temp, absDate };
+  logs.push(sample);
+
+  renderLatest(sample);
+  renderTeacher();
+  lastSyncEl.textContent = "קיבל נתונים: " + formatAbsHebrew(new Date());
+}
+
+async function disconnectSerial(){
+  try{
+    serialKeepReading = false;
+    if(serialReader){
+      try{ await serialReader.cancel(); }catch(e){}
+    }
+    if(serialPort){
+      await serialPort.close();
+    }
+  } catch(err){
+    console.error(err);
+  }
+  serialPort = null;
+  serialReader = null;
+  serialBaseStart = null;
+  setConnectedUI(false);
 }
 
 /** ------------------------------
  *  Demo mode (no hardware)
  *  ------------------------------ */
 function runDemoSync(){
-  // Generate 5 days of samples every 5 minutes
   logs = [];
   const intervalMs = 5*60*1000;
-  const totalMs = 5*24*3600*1000;
+  const totalMs = 2*24*3600*1000; // 2 days demo
   const start = Date.now() - totalMs;
 
   let soil = 55, light = 40, temp = 22;
 
   for(let t=0; t<=totalMs; t+=intervalMs){
-    // fake dynamics
     const hour = new Date(start+t).getHours();
-    light = Math.max(5, Math.min(100, (hour>=7 && hour<=18) ? 70 + 20*Math.sin((hour-7)/11*Math.PI) : 10 + 5*Math.random()));
-    temp  = Math.max(12, Math.min(35, 20 + 6*Math.sin((hour)/24*2*Math.PI) + (light/100)*4 + (Math.random()-0.5)));
+    light = Math.max(5, Math.min(100,
+      (hour>=7 && hour<=18)
+        ? 70 + 20*Math.sin((hour-7)/11*Math.PI)
+        : 10 + 5*Math.random()
+    ));
+    temp  = Math.max(12, Math.min(35,
+      20 + 6*Math.sin((hour)/24*2*Math.PI) + (light/100)*4 + (Math.random()-0.5)
+    ));
 
-    // soil dries slowly, jumps up once per day
     soil -= 0.3 + Math.random()*0.2;
-    if(hour===8 && Math.random()<0.08) soil += 25; // "watering"
+    if(hour===8 && Math.random()<0.08) soil += 25;
     soil = Math.max(5, Math.min(95, soil));
 
     logs.push({
+      plantId: 1,
       uptime_ms: t,
       soil: Math.round(soil),
       light: Math.round(light),
@@ -686,23 +680,35 @@ function runDemoSync(){
 /** ------------------------------
  *  UI wiring
  *  ------------------------------ */
-el("connectBtn").onclick = connectAndSync;
-el("disconnectBtn").onclick = disconnect;
+el("connectBtn").onclick = connectSerial;
+el("disconnectBtn").onclick = disconnectSerial;
 
-el("pullLatestBtn").onclick = async () => {
-  if(demoMode){ renderLatest(logs[logs.length-1]); return; }
-  await sendLine("GET_LATEST");
+el("pullLatestBtn").onclick = () => {
+  if(demoMode){
+    if(logs.length) renderLatest(logs[logs.length-1]);
+    return;
+  }
+  if(logs.length === 0){
+    alert("אין עדיין מדידות. ודאו שהמיקרוביט שער מחובר ושהצמחים משדרים.");
+    return;
+  }
+  renderLatest(logs[logs.length-1]);
 };
 
-el("pullLogsBtn").onclick = async () => {
-  if(demoMode){ runDemoSync(); return; }
+el("pullLogsBtn").onclick = () => {
+  if(demoMode){
+    runDemoSync();
+    return;
+  }
+  // Data is already streaming; just force a re-render
+  renderTeacher();
+};
+
+el("clearLogsBtn").onclick = () => {
+  if(!confirm("לנקות את הלוגים מהדף (לא מהמיקרוביטים)?")) return;
   logs = [];
-  await sendLine("GET_LOGS");
-};
-
-el("clearLogsBtn").onclick = async () => {
-  if(demoMode){ logs=[]; renderTeacher(); return; }
-  if(confirm("בטוח למחוק לוגים מהמיקרוביט?")) await sendLine("CLEAR_LOGS");
+  renderTeacher();
+  renderLatest({soil:0, light:0, temp:0, uptime_ms:0, absDate:new Date(), plantId:null});
 };
 
 // Kid tabs
@@ -750,7 +756,7 @@ el("demoToggleBtn").onclick = ()=>{
 };
 
 // Initial render
-renderLatest({soil:0, light:0, temp:0});
+renderLatest({soil:0, light:0, temp:0, uptime_ms:0, absDate:new Date(), plantId:null});
 </script>
 </body>
 </html>
