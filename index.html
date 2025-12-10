@@ -1,862 +1,181 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>צמחכם 🌱 | סנכרון micro:bit לצמח</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>צמחכם – סנכרון בסיסי</title>
 
-  <!-- Chart.js for graphs (CDN). If offline, graphs will show a friendly message. -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <style>
-    :root{
-      --bg:#0b1020; --card:#141a33; --ink:#e9ecf7; --muted:#9aa3c7;
-      --good:#4ade80; --warn:#fbbf24; --bad:#f87171; --info:#60a5fa;
-      --accent:#a78bfa;
-      font-synthesis: none;
-      text-rendering: optimizeLegibility;
-    }
-    body{
-      margin:0; font-family: system-ui, "Segoe UI", Arial, sans-serif;
-      background: radial-gradient(1200px 700px at 80% -10%, #1c2350, transparent),
-                  radial-gradient(900px 600px at 10% 110%, #10163a, transparent),
-                  var(--bg);
-      color:var(--ink);
-    }
-    header{
-      display:flex; align-items:center; justify-content:space-between;
-      padding:16px 18px; position:sticky; top:0; background:rgba(11,16,32,.8);
-      backdrop-filter: blur(8px); border-bottom:1px solid rgba(255,255,255,.06);
-      z-index:10;
-    }
-    header .title{
-      font-size:20px; font-weight:700; letter-spacing:.2px;
-      display:flex; align-items:center; gap:8px;
-    }
-    header .pill{
-      font-size:12px; color:var(--muted); background:rgba(255,255,255,.06);
-      padding:4px 8px; border-radius:999px;
-    }
-
-    .wrap{ max-width:980px; margin:0 auto; padding:16px; display:grid; gap:14px; }
-    .row{ display:grid; grid-template-columns: 1.2fr .8fr; gap:14px; }
-    @media (max-width: 900px){ .row{ grid-template-columns:1fr; } }
-
-    .card{
-      background:var(--card); border:1px solid rgba(255,255,255,.06);
-      border-radius:16px; padding:14px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
-    }
-    .buttons{ display:flex; flex-wrap:wrap; gap:8px; }
-    button{
-      background:rgba(255,255,255,.08); color:var(--ink); border:1px solid rgba(255,255,255,.08);
-      padding:10px 12px; border-radius:12px; cursor:pointer; font-weight:600;
-      transition:.15s transform ease, .15s background ease;
-    }
-    button:hover{ transform: translateY(-1px); background:rgba(255,255,255,.12); }
-    button.primary{ background:linear-gradient(135deg, #6ee7b7, #60a5fa); color:#081021; border:none; }
-    button.good{ background:rgba(74,222,128,.15); border-color:rgba(74,222,128,.35); }
-    button.warn{ background:rgba(251,191,36,.15); border-color:rgba(251,191,36,.35); }
-    button.bad{ background:rgba(248,113,113,.15); border-color:rgba(248,113,113,.35); }
-    button.ghost{ background:transparent; }
-
-    .status{
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-      background:rgba(0,0,0,.25); border-radius:12px; padding:10px 12px; font-size:14px;
-    }
-    .status .dot{ width:9px; height:9px; border-radius:50%; background:var(--muted); margin-left:6px; display:inline-block; }
-    .status .dot.on{ background:var(--good); box-shadow:0 0 10px var(--good); }
-
-    .tabs{ display:flex; gap:6px; margin-bottom:8px; }
-    .tab{
-      padding:8px 10px; border-radius:999px; font-size:13px; color:var(--muted);
-      background:rgba(255,255,255,.06); cursor:pointer; user-select:none;
-    }
-    .tab.active{ color:var(--ink); background:rgba(167,139,250,.18); border:1px solid rgba(167,139,250,.35); }
-
-    .bigEmoji{ font-size:64px; line-height:1; }
-    .moodLine{ font-size:22px; font-weight:800; margin:6px 0 2px; }
-    .moodSub{ font-size:16px; color:var(--muted); }
-
-    .kv{ display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:8px; }
-    .kv .item{ background:rgba(255,255,255,.05); padding:10px; border-radius:12px; text-align:center; }
-    .kv .label{ font-size:12px; color:var(--muted); }
-    .kv .val{ font-size:20px; font-weight:700; margin-top:3px; }
-
-    .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    @media (max-width: 600px){ .grid2{ grid-template-columns:1fr; } }
-
-    table{ width:100%; border-collapse:collapse; font-size:13px; }
-    th, td{ padding:8px; border-bottom:1px solid rgba(255,255,255,.06); text-align:right; }
-    th{ color:var(--muted); font-weight:700; position:sticky; top:0; background:var(--card); }
-    tr:hover td{ background:rgba(255,255,255,.03); }
-
-    .small{ font-size:12px; color:var(--muted); }
-    .notice{ font-size:13px; color:var(--muted); line-height:1.5; }
-
-    canvas{ background:rgba(255,255,255,.03); border-radius:12px; padding:8px; }
-
-    .footer{ text-align:center; padding:20px; color:var(--muted); font-size:12px; }
-    .hidden{ display:none !important; }
-  </style>
+<style>
+body {
+    font-family: system-ui, sans-serif;
+    background: #101626;
+    color: #eef2ff;
+    margin: 0;
+    padding: 20px;
+}
+button {
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    background: #4f72ff;
+    color: white;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+button:hover {
+    background: #6b86ff;
+}
+#logBox {
+    white-space: pre-wrap;
+    background: #0b1020;
+    border: 1px solid #333;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 12px;
+    height: 280px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 14px;
+}
+.status {
+    margin: 10px 0;
+    font-size: 16px;
+    font-weight: 500;
+}
+</style>
 </head>
 
 <body>
-<header>
-  <div class="title">צמחכם 🌱 <span class="pill" id="groupPill">קבוצה: -</span></div>
-  <div class="buttons">
-    <button id="modeKidBtn" class="tab active">מצב ילדים</button>
-    <button id="modeTeacherBtn" class="tab">מצב מורה</button>
-    <button id="demoToggleBtn" class="ghost small">דמו: כבוי</button>
-  </div>
-</header>
 
-<main class="wrap">
+<h2>צמחכם – סנכרון בסיסי</h2>
 
-  <!-- Connection + quick actions -->
-  <section class="card">
-    <div class="status">
-      <div><span class="dot" id="btDot"></span><span id="btStatus">מנותק</span></div>
-      <div class="small" id="lastSync">סנכרון אחרון: —</div>
-    </div>
-    <div style="height:10px"></div>
-    <div class="buttons">
-      <button id="connectBtn" class="primary">התחבר / סנכרן (USB)</button>
-      <button id="disconnectBtn">נתק</button>
-      <button id="pullLatestBtn" class="good">הצג מדידה אחרונה</button>
-      <button id="pullLogsBtn" class="warn">רענן תצוגה</button>
-      <button id="clearLogsBtn" class="bad">נקה לוגים בדף זה</button>
-    </div>
-    <div style="margin-top:8px" class="notice">
-      * חיבור עובד דרך כבל USB למחשב ודרך Chrome / Edge במחשב שולחני. במובייל / iPad זה בדרך־כלל לא נתמך.
-    </div>
-  </section>
+<div class="status">
+    מצב חיבור: <span id="status">מנותק</span>
+</div>
 
-  <div class="row">
-    <!-- Kid view -->
-    <section class="card" id="kidCard">
-      <div class="tabs">
-        <div class="tab active" data-kidtab="mood">מצב הצמח</div>
-        <div class="tab" data-kidtab="mini">מגמות קצרות</div>
-      </div>
+<button id="connectBtn">התחבר / פתח פורט</button>
+<button id="disconnectBtn">נתק</button>
 
-      <div id="kidMoodView">
-        <div class="bigEmoji" id="moodEmoji">🌿</div>
-        <div class="moodLine" id="moodLine">שלום! לחצו התחברות.</div>
-        <div class="moodSub" id="moodSub">אני מחכה למדידות…</div>
-
-        <div class="kv">
-          <div class="item">
-            <div class="label">לחות קרקע</div>
-            <div class="val" id="soilVal">—</div>
-          </div>
-          <div class="item">
-            <div class="label">אור</div>
-            <div class="val" id="lightVal">—</div>
-          </div>
-          <div class="item">
-            <div class="label">טמפרטורה</div>
-            <div class="val" id="tempVal">—</div>
-          </div>
-        </div>
-
-        <div style="margin-top:10px" class="buttons">
-          <button id="speakBtn">🔊 השמע משפט</button>
-          <button id="openCanvaBtn" class="ghost">פתח עמוד אמוג׳י של הקבוצה</button>
-        </div>
-      </div>
-
-      <div id="kidMiniView" class="hidden">
-        <div class="grid2">
-          <div>
-            <div class="small">לחות – 24 שעות</div>
-            <canvas id="miniSoil" height="160"></canvas>
-          </div>
-          <div>
-            <div class="small">אור – 24 שעות</div>
-            <canvas id="miniLight" height="160"></canvas>
-          </div>
-        </div>
-        <div style="margin-top:10px">
-          <div class="small">טמפרטורה – 24 שעות</div>
-          <canvas id="miniTemp" height="160"></canvas>
-        </div>
-      </div>
-    </section>
-
-    <!-- Teacher / logs view -->
-    <section class="card" id="teacherCard" class="hidden">
-      <div class="tabs">
-        <div class="tab active" data-teachertab="summary">סיכום</div>
-        <div class="tab" data-teachertab="graphs">גרפים</div>
-        <div class="tab" data-teachertab="table">טבלה</div>
-      </div>
-
-      <div id="teacherSummaryView">
-        <div class="grid2">
-          <div class="item" style="background:rgba(255,255,255,.05); padding:10px; border-radius:12px;">
-            <div class="label small">כמות דגימות</div>
-            <div class="val" id="countVal">0</div>
-          </div>
-          <div class="item" style="background:rgba(255,255,255,.05); padding:10px; border-radius:12px;">
-            <div class="label small">טווח זמן</div>
-            <div class="val" id="spanVal">—</div>
-          </div>
-        </div>
-
-        <div style="height:10px"></div>
-        <div class="buttons">
-          <button id="downloadCsvBtn" class="good">הורד CSV</button>
-          <button id="openSheetsBtn" class="warn">פתח בגוגל שיטס</button>
-        </div>
-
-        <div style="margin-top:8px" class="notice">
-          טיפ: הורידו CSV → פתחו Google Sheets → File → Import → Upload.
-        </div>
-      </div>
-
-      <div id="teacherGraphsView" class="hidden">
-        <div class="small">לחות קרקע לאורך זמן</div>
-        <canvas id="soilChart" height="180"></canvas>
-        <div style="height:8px"></div>
-
-        <div class="small">עוצמת אור לאורך זמן</div>
-        <canvas id="lightChart" height="180"></canvas>
-        <div style="height:8px"></div>
-
-        <div class="small">טמפרטורה לאורך זמן</div>
-        <canvas id="tempChart" height="180"></canvas>
-      </div>
-
-      <div id="teacherTableView" class="hidden" style="max-height:420px; overflow:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>זמן</th>
-              <th>לחות</th>
-              <th>אור</th>
-              <th>טמפ׳ (°C)</th>
-              <th>uptime (ש׳)</th>
-            </tr>
-          </thead>
-          <tbody id="logTbody"></tbody>
-        </table>
-      </div>
-    </section>
-
-  </div>
-
-  <section class="card">
-    <div class="notice">
-      <b>פרוטוקול מהמיקרוביט שער (Gateway):</b><br/>
-      - המיקרוביט מחובר למחשב בכבל USB וכותב שורות טקסט (CSV) לחיבור הסיריאלי.<br/>
-      - כל שורה בפורמט:<br/>
-      &nbsp;&nbsp;<code>plant_id,uptime_ms,soil,light,temp</code><br/>
-      - הדף קורא שורות אלו ומציג אותן כגרפים, טבלה ו-CSV להורדה.<br/>
-      - השער גם משדר שורת <code>GWALIVE,ms</code> כל כמה שניות כדי לסמן שהוא פעיל.<br/>
-      - במובנה המלא: שער אחד, כמה צמחים שמשדרים אליו ברדיו.
-    </div>
-  </section>
-
-</main>
-
-<div class="footer">צמחכם 🌱 | Web Serial + Canva hybrid</div>
+<div id="logBox">-- אין נתונים עדיין --</div>
 
 <script>
-/** ------------------------------
- *  CONFIG
- *  ------------------------------ */
+/****************************************************************
+ * Minimal, stable WebSerial logic
+ ****************************************************************/
+let port = null;
+let reader = null;
+let keepReading = false;
 
-// URL param group
-const params = new URLSearchParams(location.search);
-const groupId = params.get("group") || "-";
-document.getElementById("groupPill").textContent = "קבוצה: " + groupId;
+const statusEl = document.getElementById("status");
+const logBox  = document.getElementById("logBox");
 
-// Canva URL mapping per group (placeholder).
-const CANVA_MAP = {
-  "A": { happy:"https://example.com/happyA", a_bit_dry:"https://example.com/dryA", too_dry:"https://example.com/dryA", too_wet:"https://example.com/wetA", too_dark:"https://example.com/darkA", too_hot:"https://example.com/hotA", too_cold:"https://example.com/coldA" },
-  "B": { happy:"https://example.com/happyB", a_bit_dry:"https://example.com/dryB", too_dry:"https://example.com/dryB", too_wet:"https://example.com/wetB", too_dark:"https://example.com/darkB", too_hot:"https://example.com/hotB", too_cold:"https://example.com/coldB" }
+function log(msg) {
+    console.log(msg);
+    logBox.textContent += "\n" + msg;
+    logBox.scrollTop = logBox.scrollHeight;
+}
+
+function setStatus(txt) {
+    statusEl.textContent = txt;
+}
+
+/****************************************************************
+ * CONNECT LOGIC – bullet-proof, one call, user gesture only
+ ****************************************************************/
+document.getElementById("connectBtn").onclick = async () => {
+    try {
+        log("Opening device chooser...");
+        const chosen = await navigator.serial.requestPort();   // MUST be in click handler
+        log("Port selected.");
+        port = chosen;
+
+        await port.open({ baudRate: 115200 });
+        log("Port opened!");
+        setStatus("מחובר");
+
+        startReading();
+    }
+    catch (err) {
+        log("Connect error: " + err);
+        setStatus("שגיאה / לא מחובר");
+    }
 };
 
-// Moods in Hebrew + emojis
-const MOODS = {
-  happy: { emoji:"😊🌿", line:"אני שמחה!", sub:"הכל מרגיש לי בדיוק נכון.", tts:"אני שמחה. הכל מרגיש לי בדיוק נכון." },
-  a_bit_dry: { emoji:"😐💧", line:"אני קצת צמאה", sub:"עוד מעט כדאי להשקות אותי.", tts:"אני קצת צמאה. עוד מעט כדאי להשקות אותי." },
-  too_dry: { emoji:"😣🏜️", line:"אני יבשה מדי!", sub:"בבקשה להשקות אותי בקרוב.", tts:"אני יבשה מדי. בבקשה להשקות אותי בקרוב." },
-  too_wet: { emoji:"😵‍💫🌊", line:"יש לי יותר מדי מים", sub:"תנו לי זמן להתייבש.", tts:"יש לי יותר מדי מים. תנו לי זמן להתייבש." },
-  too_dark:{ emoji:"😴🌑", line:"חשוך לי", sub:"אני רוצה יותר אור.", tts:"חשוך לי. אני רוצה יותר אור." },
-  too_hot: { emoji:"🥵☀️", line:"חם לי מדי", sub:"אולי קצת צל יעזור.", tts:"חם לי מדי. אולי קצת צל יעזור." },
-  too_cold:{ emoji:"🥶❄️", line:"קר לי", sub:"אפשר מקום חמים יותר?", tts:"קר לי. אפשר מקום חמים יותר?" },
-  confused:{ emoji:"🤖❓", line:"משהו לא ברור לי", sub:"בדקו את החיישנים בבקשה.", tts:"משהו לא ברור לי. בדקו את החיישנים בבקשה." }
-};
+/****************************************************************
+ * DISCONNECT
+ ****************************************************************/
+document.getElementById("disconnectBtn").onclick = async () => {
+    keepReading = false;
 
-// Thresholds (tune later)
-const TH = {
-  soilTooDry: 25,
-  soilABitDry: 35,
-  soilTooWet: 80,
-  lightTooDark: 20,
-  tempTooHot: 32,
-  tempTooCold: 12
-};
-
-
-/** ------------------------------
- *  STATE
- *  ------------------------------ */
-let demoMode = false;
-
-let logs = []; // {plantId, uptime_ms, soil, light, temp, absDate: Date}
-let lastLatest = null;
-let charts = { soil:null, light:null, temp:null, miniSoil:null, miniLight:null, miniTemp:null };
-
-// Web Serial
-let serialPort = null;
-let serialReader = null;
-let serialKeepReading = false;
-let serialBaseStart = null; // Date to reconstruct abs times
-
-/** ------------------------------
- *  UI helpers
- *  ------------------------------ */
-const el = id => document.getElementById(id);
-const btDot = el("btDot");
-const btStatus = el("btStatus");
-const lastSyncEl = el("lastSync");
-
-function setConnectedUI(on){
-  btDot.classList.toggle("on", on);
-  btStatus.textContent = on ? "מחובר (USB)" : "מנותק";
-}
-
-function formatAbsHebrew(d){
-  const hh = String(d.getHours()).padStart(2,"0");
-  const mm = String(d.getMinutes()).padStart(2,"0");
-  const dd = String(d.getDate()).padStart(2,"0");
-  const mo = String(d.getMonth()+1).padStart(2,"0");
-  const yy = String(d.getFullYear()).slice(-2);
-  const wd = ["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ש׳"][d.getDay()];
-  return `${hh}:${mm}  ${wd}  ${dd}/${mo}/${yy}`;
-}
-
-/** ------------------------------
- *  Mood logic
- *  ------------------------------ */
-function computeMood(sample){
-  if(!sample) return "confused";
-
-  const {soil, light, temp} = sample;
-
-  if(soil <= TH.soilTooDry)    return "too_dry";
-  if(soil >= TH.soilTooWet)    return "too_wet";
-  if(temp >= TH.tempTooHot)    return "too_hot";
-  if(temp <= TH.tempTooCold)   return "too_cold";
-  if(light <= TH.lightTooDark) return "too_dark";
-  if(soil <= TH.soilABitDry)   return "a_bit_dry";
-
-  return "happy";
-}
-
-/** ------------------------------
- *  Rendering
- *  ------------------------------ */
-function renderLatest(sample){
-  if(!sample) return;
-
-  const moodKey = computeMood(sample);
-  const mood = MOODS[moodKey] || MOODS.confused;
-
-  el("moodEmoji").textContent = mood.emoji;
-  el("moodLine").textContent = mood.line;
-  el("moodSub").textContent = mood.sub;
-
-  el("soilVal").textContent = `${sample.soil}%`;
-  el("lightVal").textContent = `${sample.light}%`;
-  el("tempVal").textContent = `${sample.temp.toFixed(1)}°`;
-
-  const gmap = CANVA_MAP[groupId];
-  const canvaUrl = gmap?.[moodKey] || gmap?.happy || null;
-  el("openCanvaBtn").onclick = () => {
-    if(canvaUrl) window.open(canvaUrl, "_blank");
-    else alert("לא מוגדר עמוד Canva למצב הזה עדיין.");
-  };
-
-  el("speakBtn").onclick = () => speak(mood.tts);
-
-  lastLatest = {...sample, moodKey};
-}
-
-function renderTeacher(){
-  el("countVal").textContent = logs.length;
-
-  if(logs.length >= 2){
-    const spanMs = logs[logs.length-1].uptime_ms - logs[0].uptime_ms;
-    const hours = Math.floor(spanMs/3600000);
-    const mins  = Math.floor((spanMs%3600000)/60000);
-    el("spanVal").textContent = `${hours} שעות ${mins} דק׳`;
-  } else {
-    el("spanVal").textContent = "—";
-  }
-
-  const tbody = el("logTbody");
-  tbody.innerHTML = "";
-  logs.forEach((s,i)=>{
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${i+1}</td>
-      <td>${s.absDate ? formatAbsHebrew(s.absDate) : "—"}</td>
-      <td>${s.soil}</td>
-      <td>${s.light}</td>
-      <td>${s.temp.toFixed(1)}</td>
-      <td>${Math.round(s.uptime_ms/1000)}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  renderCharts();
-  renderMiniCharts();
-}
-
-function renderCharts(){
-  if(!window.Chart){
-    el("teacherGraphsView").innerHTML = "<div class='notice'>Chart.js לא נטען (כנראה בלי אינטרנט). אפשר עדיין להוריד CSV.</div>";
-    return;
-  }
-  if(logs.length === 0) return;
-
-  const labels = logs.map(s => s.absDate ? formatAbsHebrew(s.absDate) : (s.uptime_ms/3600000).toFixed(2));
-  const soilData  = logs.map(s => s.soil);
-  const lightData = logs.map(s => s.light);
-  const tempData  = logs.map(s => s.temp);
-
-  charts.soil?.destroy();
-  charts.light?.destroy();
-  charts.temp?.destroy();
-
-  charts.soil = new Chart(el("soilChart"), {
-    type:"line",
-    data:{ labels, datasets:[{label:"לחות (%)", data:soilData, tension:.25}] },
-    options:{ responsive:true, plugins:{legend:{display:false}}, scales:{x:{ticks:{maxTicksLimit:6}}} }
-  });
-  charts.light = new Chart(el("lightChart"), {
-    type:"line",
-    data:{ labels, datasets:[{label:"אור (%)", data:lightData, tension:.25}] },
-    options:{ responsive:true, plugins:{legend:{display:false}}, scales:{x:{ticks:{maxTicksLimit:6}}} }
-  });
-  charts.temp = new Chart(el("tempChart"), {
-    type:"line",
-    data:{ labels, datasets:[{label:"טמפ׳ (°C)", data:tempData, tension:.25}] },
-    options:{ responsive:true, plugins:{legend:{display:false}}, scales:{x:{ticks:{maxTicksLimit:6}}} }
-  });
-}
-
-function renderMiniCharts(){
-  if(!window.Chart || logs.length < 2) return;
-
-  const now = new Date();
-  let slice = logs;
-  if(logs[0].absDate){
-    slice = logs.filter(s => (now - s.absDate) <= 24*3600*1000);
-  } else {
-    slice = logs.slice(-240);
-  }
-
-  const labels = slice.map(s => s.absDate
-    ? String(s.absDate.getHours()).padStart(2,"0")+":"+String(s.absDate.getMinutes()).padStart(2,"0")
-    : Math.round(s.uptime_ms/60000)+" דק׳"
-  );
-  const soilData  = slice.map(s => s.soil);
-  const lightData = slice.map(s => s.light);
-  const tempData  = slice.map(s => s.temp);
-
-  charts.miniSoil?.destroy();
-  charts.miniLight?.destroy();
-  charts.miniTemp?.destroy();
-
-  charts.miniSoil = new Chart(el("miniSoil"), { type:"line",
-    data:{labels, datasets:[{data:soilData, tension:.25}]},
-    options:{plugins:{legend:{display:false}}, scales:{x:{display:false}, y:{ticks:{maxTicksLimit:4}}}}
-  });
-  charts.miniLight = new Chart(el("miniLight"), { type:"line",
-    data:{labels, datasets:[{data:lightData, tension:.25}]},
-    options:{plugins:{legend:{display:false}}, scales:{x:{display:false}, y:{ticks:{maxTicksLimit:4}}}}
-  });
-  charts.miniTemp = new Chart(el("miniTemp"), { type:"line",
-    data:{labels, datasets:[{data:tempData, tension:.25}]},
-    options:{plugins:{legend:{display:false}}, scales:{x:{display:false}, y:{ticks:{maxTicksLimit:4}}}}
-  });
-}
-
-/** ------------------------------
- *  CSV export
- *  ------------------------------ */
-function makeCsv(){
-  const header = ["timestamp","weekday","uptime_s","soil","light","temp_c","plant_id"];
-  const rows = logs.map(s=>{
-    const d = s.absDate || new Date();
-    const ts = formatAbsHebrew(d);
-    const wd = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()];
-    return [ts, wd, Math.round(s.uptime_ms/1000), s.soil, s.light, s.temp.toFixed(2), s.plantId ?? ""];
-  });
-  return [header, ...rows].map(r=>r.join(",")).join("\n");
-}
-
-el("downloadCsvBtn").onclick = () => {
-  const csv = makeCsv();
-  const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `plant_logs_group_${groupId}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-};
-
-el("openSheetsBtn").onclick = () => {
-  window.open("https://sheets.new", "_blank");
-};
-
-/** ------------------------------
- *  Web Speech TTS
- *  ------------------------------ */
-function speak(text){
-  if(!("speechSynthesis" in window)) return alert("הדפדפן לא תומך בהקראה.");
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "he-IL";
-  u.rate = 1.0;
-  speechSynthesis.cancel();
-  speechSynthesis.speak(u);
-}
-
-/** ------------------------------
- *  Web Serial logic (gateway CSV + heartbeat)
- *  ------------------------------ */
-async function connectSerial(){
-  if(demoMode){
-    runDemoSync();
-    return;
-  }
-
-  try{
-    if(!("serial" in navigator)){
-      alert("הדפדפן לא תומך ב-Web Serial. נסה Chrome / Edge במחשב שולחני.");
-      return;
+    try {
+        if (reader) {
+            await reader.cancel();
+        }
+        if (port) {
+            await port.close();
+        }
+    } catch (e) {
+        log("Disconnect error: " + e);
     }
 
-console.log("Calling requestPort...");
-let chosen;
-try {
-    chosen = await navigator.serial.requestPort({});
-    console.log("User selected:", chosen);
-} catch (e) {
-    console.error("ERROR inside requestPort:", e);
-    alert("requestPort failed: " + e);
-    return;
-}
-serialPort = chosen;
-    await serialPort.open({ baudRate: 115200 });
+    reader = null;
+    port = null;
+    setStatus("מנותק");
+    log("Port closed.");
+};
 
-    setConnectedUI(true);
-    lastSyncEl.textContent = "חיבור פעיל: " + formatAbsHebrew(new Date());
-
-    serialKeepReading = true;
-    serialBaseStart = null;
-
-    const textDecoder = new TextDecoderStream();
-    const readableClosed = serialPort.readable.pipeTo(textDecoder.writable);
-    const reader = textDecoder.readable.getReader();
-    serialReader = reader;
+/****************************************************************
+ * READ LOOP – Simple CSV gateway format
+ * Expected CSV: plantId,uptime_ms,soil,light,temp
+ ****************************************************************/
+async function startReading() {
+    keepReading = true;
+    const decoder = new TextDecoderStream();
+    const closed = port.readable.pipeTo(decoder.writable);
+    reader = decoder.readable.getReader();
 
     let buffer = "";
 
-    (async () => {
-      try{
-        while(serialKeepReading){
-          const { value, done } = await reader.read();
-          if(done) break;
-          if(value){
-            buffer += value;
-            let lines = buffer.split(/\r?\n/);
-            buffer = lines.pop() || "";
-            for(const line of lines){
-              const trimmed = line.trim();
-              if(trimmed) handleSerialLine(trimmed);
+    while (keepReading) {
+        try {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            if (value) {
+                buffer += value;
+                let lines = buffer.split(/\r?\n/);
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    handleLine(line.trim());
+                }
             }
-          }
         }
-      } catch(err){
-        console.error("Serial read error:", err);
-      } finally{
-        reader.releaseLock();
-      }
-    })();
-
-  } catch(err){
-    console.error(err);
-    alert("לא הצלחתי להתחבר ל-micro:bit דרך USB. ודאו שהוא מחובר ומזוהה במחשב.");
-    setConnectedUI(false);
-  }
+        catch (err) {
+            log("Read error: " + err);
+            break;
+        }
+    }
 }
 
-function handleSerialLine(line){
-  console.log("RAW LINE FROM GATEWAY:", line);
+/****************************************************************
+ * Handle incoming gateway CSV lines
+ ****************************************************************/
+function handleLine(line) {
+    if (!line) return;
 
-  // Heartbeat from gateway: "GWALIVE,<millis>"
-  if (line.startsWith("GWALIVE")) {
+    log("RX: " + line);
+
+    if (line.startsWith("#")) return;
+
     const parts = line.split(",");
-    const ms = Number(parts[1] || 0);
-    setConnectedUI(true);
-    lastSyncEl.textContent = "שער פעיל (ללא / עם נתוני צמח) – " + formatAbsHebrew(new Date());
-    return;
-  }
-
-  // Ignore comments / header lines
-  if (line.startsWith("#")) {
-    console.log("HEADER/COMMENT:", line);
-    return;
-  }
-
-  const parts = line.split(",");
-
-  if (parts.length < 4) {
-    console.warn("שורה לא צפויה (פחות מ-4 חלקים):", line);
-    return;
-  }
-
-  let plantId, uptime_ms, soil, light, temp;
-
-  if (parts.length === 5) {
-    // ✅ Ideal case: plant_id,uptime_ms,soil,light,temp
-    plantId   = Number(parts[0]);
-    uptime_ms = Number(parts[1]);
-    soil      = Number(parts[2]);
-    light     = Number(parts[3]);
-    temp      = Number(parts[4]);
-  } else if (parts.length === 4) {
-    // 🟡 Fallback: plant_id,uptime_ms,soil,temp  (no light)
-    plantId   = Number(parts[0]);
-    uptime_ms = Number(parts[1]);
-    soil      = Number(parts[2]);
-    temp      = Number(parts[3]);
-
-    // If light is missing, reuse last light if we have it, otherwise 0
-    light = lastLatest ? lastLatest.light : 0;
-  } else {
-    // More than 5 parts – log & ignore for now
-    console.warn("שורה לא צפויה (מספר חלקים לא ידוע):", line);
-    return;
-  }
-
-  const now = new Date();
-  if (!serialBaseStart) {
-    // Align first sample so that: base + uptime_ms ≈ now
-    serialBaseStart = new Date(now.getTime() - uptime_ms);
-  }
-  const absDate = new Date(serialBaseStart.getTime() + uptime_ms);
-
-  // Safety clamps so we don't get crazy numbers on screen
-  const safeTemp  = Math.max(-10, Math.min(60, temp));
-  const safeLight = Math.max(0,   Math.min(100, light));
-  const safeSoil  = Math.max(0,   Math.min(100, soil));
-
-  const sample = {
-    plantId,
-    uptime_ms,
-    soil:  safeSoil,
-    light: safeLight,
-    temp:  safeTemp,
-    absDate
-  };
-
-  logs.push(sample);
-
-  renderLatest(sample);
-  renderTeacher();
-  lastSyncEl.textContent = "קיבל נתונים: " + formatAbsHebrew(new Date());
-}
-
-
-async function disconnectSerial(){
-  try{
-    serialKeepReading = false;
-    if(serialReader){
-      try{ await serialReader.cancel(); }catch(e){}
+    if (parts.length === 5) {
+        const [plantId, uptime, soil, light, temp] = parts;
+        log(`Parsed CSV → ID=${plantId}, U=${uptime}ms, S=${soil}%, L=${light}%, T=${temp}°`);
     }
-    if(serialPort){
-      await serialPort.close();
-    }
-  } catch(err){
-    console.error(err);
-  }
-  serialPort = null;
-  serialReader = null;
-  serialBaseStart = null;
-  setConnectedUI(false);
 }
-
-/** ------------------------------
- *  Demo mode (no hardware)
- *  ------------------------------ */
-function runDemoSync(){
-  logs = [];
-  const intervalMs = 5*60*1000;
-  const totalMs = 2*24*3600*1000; // 2 days demo
-  const start = Date.now() - totalMs;
-
-  let soil = 55, light = 40, temp = 22;
-
-  for(let t=0; t<=totalMs; t+=intervalMs){
-    const hour = new Date(start+t).getHours();
-    light = Math.max(5, Math.min(100,
-      (hour>=7 && hour<=18)
-        ? 70 + 20*Math.sin((hour-7)/11*Math.PI)
-        : 10 + 5*Math.random()
-    ));
-    temp  = Math.max(12, Math.min(35,
-      20 + 6*Math.sin((hour)/24*2*Math.PI) + (light/100)*4 + (Math.random()-0.5)
-    ));
-
-    soil -= 0.3 + Math.random()*0.2;
-    if(hour===8 && Math.random()<0.08) soil += 25;
-    soil = Math.max(5, Math.min(95, soil));
-
-    logs.push({
-      plantId: 1,
-      uptime_ms: t,
-      soil: Math.round(soil),
-      light: Math.round(light),
-      temp: Number(temp.toFixed(1)),
-      absDate: new Date(start+t)
-    });
-  }
-
-  const latest = logs[logs.length-1];
-  renderLatest(latest);
-  renderTeacher();
-  setConnectedUI(false);
-  lastSyncEl.textContent = "סנכרון אחרון (דמו): " + formatAbsHebrew(new Date());
-}
-
-/** ------------------------------
- *  UI wiring
- *  ------------------------------ */
-el("connectBtn").onclick = connectSerial;
-el("disconnectBtn").onclick = disconnectSerial;
-
-el("pullLatestBtn").onclick = () => {
-  if(demoMode){
-    if(logs.length) renderLatest(logs[logs.length-1]);
-    return;
-  }
-  if(logs.length === 0){
-    alert("אין עדיין מדידות. ודאו שהמיקרוביט שער מחובר ושהצמחים משדרים.");
-    return;
-  }
-  renderLatest(logs[logs.length-1]);
-};
-
-el("pullLogsBtn").onclick = () => {
-  if(demoMode){
-    runDemoSync();
-    return;
-  }
-  // Data is already streaming; just force a re-render
-  renderTeacher();
-};
-
-el("clearLogsBtn").onclick = () => {
-  if(!confirm("לנקות את הלוגים מהדף (לא מהמיקרוביטים)?")) return;
-  logs = [];
-  renderTeacher();
-  renderLatest({soil:0, light:0, temp:0, uptime_ms:0, absDate:new Date(), plantId:null});
-};
-
-// Kid tabs
-document.querySelectorAll("[data-kidtab]").forEach(t=>{
-  t.onclick = ()=>{
-    document.querySelectorAll("[data-kidtab]").forEach(x=>x.classList.remove("active"));
-    t.classList.add("active");
-    const tab = t.dataset.kidtab;
-    el("kidMoodView").classList.toggle("hidden", tab!=="mood");
-    el("kidMiniView").classList.toggle("hidden", tab!=="mini");
-  };
-});
-
-// Teacher tabs
-document.querySelectorAll("[data-teachertab]").forEach(t=>{
-  t.onclick = ()=>{
-    document.querySelectorAll("[data-teachertab]").forEach(x=>x.classList.remove("active"));
-    t.classList.add("active");
-    const tab = t.dataset.teachertab;
-    el("teacherSummaryView").classList.toggle("hidden", tab!=="summary");
-    el("teacherGraphsView").classList.toggle("hidden", tab!=="graphs");
-    el("teacherTableView").classList.toggle("hidden", tab!=="table");
-  };
-});
-
-// Mode switch
-el("modeKidBtn").onclick = ()=>{
-  el("modeKidBtn").classList.add("active");
-  el("modeTeacherBtn").classList.remove("active");
-  el("kidCard").classList.remove("hidden");
-  el("teacherCard").classList.add("hidden");
-};
-el("modeTeacherBtn").onclick = ()=>{
-  el("modeTeacherBtn").classList.add("active");
-  el("modeKidBtn").classList.remove("active");
-  el("teacherCard").classList.remove("hidden");
-  el("kidCard").classList.add("hidden");
-};
-
-// Demo toggle
-el("demoToggleBtn").onclick = ()=>{
-  demoMode = !demoMode;
-  el("demoToggleBtn").textContent = "דמו: " + (demoMode ? "פעיל" : "כבוי");
-  if(demoMode) runDemoSync();
-};
-
-// Initial render
-renderLatest({soil:0, light:0, temp:0, uptime_ms:0, absDate:new Date(), plantId:null});
 </script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Plant Network Sync</title>
-
-<link rel="stylesheet" href="styles.css" />
-
-<!-- LOCAL Chart.js (ensures offline operation) -->
-<script src="chart.min.js"></script>
-
-</head>
-<body>
-
-<header class="topbar">
-    <h1>Plant Sync Dashboard</h1>
-    <button id="connectBtn" class="connect-btn">Connect to Gateway</button>
-    <span id="connStatus" class="status">Not Connected</span>
-</header>
-
-<main>
-
-    <!-- Auto-generated tabs -->
-    <div id="tabsContainer" class="tabs-container"></div>
-
-    <!-- Auto-generated plant content -->
-    <div id="tabContents" class="tab-contents"></div>
-
-</main>
-
-<footer>
-    <h3>Debug Log</h3>
-    <div id="logBox" class="log-box"></div>
-</footer>
-
-<script src="sync.js"></script>
 
 </body>
 </html>
