@@ -1,0 +1,12 @@
+<button id="btn">Open Serial</button>
+<script>
+document.getElementById("btn").onclick = async () => {
+  try {
+    const port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 9600 });
+    alert("CONNECTED!");
+  } catch (e) {
+    alert("Error: " + e.toString());
+  }
+};
+</script>
